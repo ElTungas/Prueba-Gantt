@@ -99,16 +99,16 @@ body {
   background: #d0d0d0;
   border-radius: 4px;
   cursor: pointer;
+  overflow: visible;
 }
 
 /* AVANCE */
 .gantt-progress {
   height: 100%;
-  background: #0078d4;
   border-radius: 4px;
 }
 
-/* TOOLTIP ANCLADO (IFRAME SAFE) */
+/* TOOLTIP */
 .gantt-tooltip {
   position: absolute;
   top: -8px;
@@ -134,6 +134,27 @@ body {
   margin-bottom: 6px;
   color: #ffd966;
 }
+
+/* LÍNEA DE HOY */
+.today-line {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: red;
+  z-index: 5;
+}
+
+.today-label {
+  position: absolute;
+  top: 0;
+  transform: translateX(-50%);
+  background: red;
+  color: #fff;
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
 </style>
 </head>
 
@@ -154,7 +175,16 @@ body {
 
 <script>
 /* =========================
-   DATOS DEL GANTT
+   COLORES POR FASE
+========================= */
+const phaseColors = {
+  "Fase 1 – Análisis": "#0078d4",
+  "Fase 2 – Diseño": "#00a300",
+  "Fase 3 – Implementación": "#c00000"
+};
+
+/* =========================
+   DATOS
 ========================= */
 const data = [
   {
@@ -178,7 +208,9 @@ const data = [
   }
 ];
 
-/* RANGO */
+/* =========================
+   RANGO
+========================= */
 const ganttStart = new Date("2026-04-01");
 const ganttEnd = new Date("2026-04-30");
 const totalDays = Math.round((ganttEnd - ganttStart) / 86400000) + 1;
@@ -186,7 +218,7 @@ const totalDays = Math.round((ganttEnd - ganttStart) / 86400000) + 1;
 const header = document.getElementById("timeline-header");
 const body = document.getElementById("gantt-body");
 
-/* HEADER DE DÍAS */
+/* HEADER DÍAS */
 for (let i = 0; i < totalDays; i++) {
   const d = document.createElement("div");
   d.className = "timeline-day";
@@ -194,12 +226,34 @@ for (let i = 0; i < totalDays; i++) {
   header.appendChild(d);
 }
 
+/* POSICIÓN DE HOY */
+const today = new Date();
+if (today >= ganttStart && today <= ganttEnd) {
+  const offsetDays = (today - ganttStart) / 86400000;
+  const leftPercent = (offsetDays / totalDays) * 100;
+
+  const todayLine = document.createElement("div");
+  todayLine.className = "today-line";
+  todayLine.style.left = leftPercent + "%";
+
+  const todayLabel = document.createElement("div");
+  todayLabel.className = "today-label";
+  todayLabel.textContent = "HOY";
+  todayLabel.style.left = leftPercent + "%";
+
+  body.appendChild(todayLine);
+  body.appendChild(todayLabel);
+}
+
 /* RENDER */
 data.forEach(phase => {
+
+  const phaseColor = phaseColors[phase.phase] || "#666";
 
   const phaseRow = document.createElement("div");
   phaseRow.className = "phase-row";
   phaseRow.textContent = phase.phase;
+  phaseRow.style.borderLeft = `6px solid ${phaseColor}`;
   body.appendChild(phaseRow);
 
   const wrapper = document.createElement("div");
@@ -229,6 +283,7 @@ data.forEach(phase => {
     const progress = document.createElement("div");
     progress.className = "gantt-progress";
     progress.style.width = act.progress + "%";
+    progress.style.background = phaseColor;
 
     const tooltip = document.createElement("div");
     tooltip.className = "gantt-tooltip";
@@ -242,7 +297,6 @@ data.forEach(phase => {
 
     const start = new Date(act.start);
     const end = new Date(act.end);
-
     const offset = (start - ganttStart) / 86400000;
     const duration = (end - start) / 86400000 + 1;
 
