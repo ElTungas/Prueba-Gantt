@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gantt por Fases</title>
+
+<style>
+body {
+  margin: 0;
+  padding: 16px;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: #ffffff;
+}
+
+.gantt-container {
+  max-width: 1400px;
+  margin: auto;
+}
+
+/* HEADER */
+.gantt-header {
+  display: flex;
+  background: #f3f3f3;
+  border-bottom: 2px solid #bfbfbf;
+  font-weight: 600;
+}
+
+.col-task {
+  width: 300px;
+  padding: 10px;
+  border-right: 1px solid #bfbfbf;
+}
+
+.col-timeline {
+  flex: 1;
+  display: flex;
+}
+
+.timeline-day {
+  flex: 1;
+  text-align: center;
+  font-size: 11px;
+  padding: 6px 0;
+  border-left: 1px solid #d9d9d9;
+}
+
+/* FASE */
+.phase-row {
+  background: #e7e7e7;
+  font-weight: 600;
+  padding: 8px 10px;
+  border-top: 2px solid #bfbfbf;
+  border-bottom: 1px solid #bfbfbf;
+  cursor: pointer;
+  user-select: none;
+}
+
+.phase-row::before {
+  content: "▼ ";
+}
+
+.phase-row.collapsed::before {
+  content: "▶ ";
+}
+
+/* FILAS */
+.gantt-row {
+  display: flex;
+  min-height: 44px;
+  border-bottom: 1px solid #d9d9d9;
+}
+
+.gantt-task {
+  width: 300px;
+  padding: 10px;
+  font-size: 13px;
+  border-right: 1px solid #d9d9d9;
+  background: #fff;
+}
+
+.gantt-timeline {
+  flex: 1;
+  position: relative;
+  background-image: repeating-linear-gradient(
+    to right,
+    #ffffff,
+    #ffffff calc(100% / var(--days) - 1px),
+    #e6e6e6 calc(100% / var(--days)),
+    #e6e6e6 calc(100% / var(--days) + 1px)
+  );
+}
+
+/* BARRA */
+.gantt-bar {
+  position: absolute;
+  height: 22px;
+  top: 10px;
+  background: #d0d0d0;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* AVANCE */
+.gantt-progress {
+  height: 100%;
+  background: #0078d4;
+  border-radius: 4px;
+}
+
+/* TOOLTIP ANCLADO (IFRAME SAFE) */
+.gantt-tooltip {
+  position: absolute;
+  top: -8px;
+  left: 0;
+  transform: translateY(-100%);
+  background: #1f1f1f;
+  color: #ffffff;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 12px;
+  width: 260px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.gantt-bar:hover .gantt-tooltip {
+  opacity: 1;
+}
+
+.gantt-tooltip-title {
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #ffd966;
+}
+</style>
+</head>
+
+<body>
+
+<div class="gantt-container">
+
+  <!-- HEADER -->
+  <div class="gantt-header">
+    <div class="col-task">Fase / Actividad</div>
+    <div class="col-timeline" id="timeline-header"></div>
+  </div>
+
+  <!-- BODY -->
+  <div id="gantt-body"></div>
+
+</div>
+
+<script>
+/* =========================
+   DATOS DEL GANTT
+========================= */
+const data = [
+  {
+    phase: "Fase 1 – Análisis",
+    activities: [
+      { name: "Levantamiento de procesos", start: "2026-04-01", end: "2026-04-07", progress: 100, owner: "Procesos" },
+      { name: "Análisis AS‑IS", start: "2026-04-05", end: "2026-04-15", progress: 70, owner: "PMO" }
+    ]
+  },
+  {
+    phase: "Fase 2 – Diseño",
+    activities: [
+      { name: "Diseño TO‑BE", start: "2026-04-16", end: "2026-04-25", progress: 40, owner: "Transformación" }
+    ]
+  },
+  {
+    phase: "Fase 3 – Implementación",
+    activities: [
+      { name: "Configuración de sistemas", start: "2026-04-20", end: "2026-04-30", progress: 15, owner: "TI" }
+    ]
+  }
+];
+
+/* RANGO */
+const ganttStart = new Date("2026-04-01");
+const ganttEnd = new Date("2026-04-30");
+const totalDays = Math.round((ganttEnd - ganttStart) / 86400000) + 1;
+
+const header = document.getElementById("timeline-header");
+const body = document.getElementById("gantt-body");
+
+/* HEADER DE DÍAS */
+for (let i = 0; i < totalDays; i++) {
+  const d = document.createElement("div");
+  d.className = "timeline-day";
+  d.textContent = i + 1;
+  header.appendChild(d);
+}
+
+/* RENDER */
+data.forEach(phase => {
+
+  const phaseRow = document.createElement("div");
+  phaseRow.className = "phase-row";
+  phaseRow.textContent = phase.phase;
+  body.appendChild(phaseRow);
+
+  const wrapper = document.createElement("div");
+  body.appendChild(wrapper);
+
+  phaseRow.addEventListener("click", () => {
+    wrapper.style.display = wrapper.style.display === "none" ? "" : "none";
+    phaseRow.classList.toggle("collapsed");
+  });
+
+  phase.activities.forEach(act => {
+
+    const row = document.createElement("div");
+    row.className = "gantt-row";
+
+    const task = document.createElement("div");
+    task.className = "gantt-task";
+    task.textContent = act.name;
+
+    const timeline = document.createElement("div");
+    timeline.className = "gantt-timeline";
+    timeline.style.setProperty("--days", totalDays);
+
+    const bar = document.createElement("div");
+    bar.className = "gantt-bar";
+
+    const progress = document.createElement("div");
+    progress.className = "gantt-progress";
+    progress.style.width = act.progress + "%";
+
+    const tooltip = document.createElement("div");
+    tooltip.className = "gantt-tooltip";
+    tooltip.innerHTML = `
+      <div class="gantt-tooltip-title">${act.name}</div>
+      <div><strong>Fase:</strong> ${phase.phase}</div>
+      <div><strong>Responsable:</strong> ${act.owner}</div>
+      <div><strong>Avance:</strong> ${act.progress}%</div>
+      <div>${act.start} → ${act.end}</div>
+    `;
+
+    const start = new Date(act.start);
+    const end = new Date(act.end);
+
+    const offset = (start - ganttStart) / 86400000;
+    const duration = (end - start) / 86400000 + 1;
+
+    bar.style.left = (offset / totalDays * 100) + "%";
+    bar.style.width = (duration / totalDays * 100) + "%";
+
+    bar.appendChild(progress);
+    bar.appendChild(tooltip);
+    timeline.appendChild(bar);
+
+    row.appendChild(task);
+    row.appendChild(timeline);
+    wrapper.appendChild(row);
+  });
+});
+</script>
+
+</body>
+</html>
